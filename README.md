@@ -28,7 +28,14 @@ Check terraform guide on [installtion](https://www.terraform.io/docs/plugins/bas
 
 These default environment variables will be used if omitted from provider config block.
 
-    - `HYDRA_CLIENT_ID` 
-    - `HYDRA_CLIENT_SECRET` 
-    - `HYDRA_CLUSTER_URL` 
+- `HYDRA_CLIENT_ID` 
+- `HYDRA_CLIENT_SECRET` 
+- `HYDRA_CLUSTER_URL` 
 
+
+## Running examples
+
+To run examples in `/examples` `cd` into directory and issue following commands:
+
+- `terraform plan` # shows which changes it will bring
+- `terraform apply` # actually creates configured clients and policies
