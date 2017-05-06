@@ -1,0 +1,16 @@
+package: github.com/faxal/terraform-provider-hydra
+import:
+- package: github.com/hashicorp/terraform
+  version: ^0.9.4
+  subpackages:
+  - helper/hashcode
+  - helper/schema
+  - plugin
+  - terraform
+- package: github.com/ory-am/hydra
+  version: 3cfab4e914f2575fbb52d7b7b487cd25b6a58931
+  subpackages:
+  - client
+  - sdk
+- package: github.com/ory-am/ladon
+  version: 0.5.0
