@@ -37,5 +37,5 @@ These default environment variables will be used if omitted from provider config
 
 To run examples in `/examples` `cd` into directory and issue following commands:
 
-- `terraform plan` # shows which changes it will bring
-- `terraform apply` # actually creates configured clients and policies
+- `terraform plan` shows which changes it will bring
+- `terraform apply` actually creates configured clients and policies
