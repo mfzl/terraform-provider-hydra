@@ -29,7 +29,7 @@ func resourceHydraPolicy() *schema.Resource {
 				Optional: true,
 			},
 			"subjects": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Required: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
@@ -40,7 +40,7 @@ func resourceHydraPolicy() *schema.Resource {
 			},
 			"actions": {
 				Type:     schema.TypeList,
-				Required: true,
+				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 			"effect": {
@@ -133,7 +133,7 @@ func setPolicyData(d *schema.ResourceData, policy *ladon.DefaultPolicy) {
 	}
 
 	if v, ok := d.GetOk("subjects"); ok {
-		policy.Subjects = toStringSlice(v.([]interface{}))
+		policy.Subjects = toStringSlice(v.(*schema.Set).List())
 	}
 
 	if v, ok := d.GetOk("effect"); ok {
@@ -248,6 +248,10 @@ func resourceHydraPolicyUpdate(d *schema.ResourceData, meta interface{}) error {
 	if err != nil {
 		return err
 	}
+
+	// if d.HasChange("scopes") {
+	// 	old, new := d.GetChange("scopes")
+	// }
 
 	return resourceHydraPolicyRead(d, meta)
 }

@@ -68,7 +68,7 @@ func resourceHydraClient() *schema.Resource {
 			"redirect_uris": &schema.Schema{
 				Type:     schema.TypeList,
 				Elem:     &schema.Schema{Type: schema.TypeString},
-				Required: true,
+				Optional: true,
 			},
 			"scope": &schema.Schema{
 				Type:     schema.TypeSet,
@@ -153,6 +153,8 @@ func setClientData(d *schema.ResourceData, c *hclient.Client) {
 
 	if val, ok := d.GetOk("public"); ok {
 		c.Public = val.(bool)
+	} else {
+		c.Public = false
 	}
 
 	if val, ok := d.GetOk("response_types"); ok {
@@ -224,7 +226,13 @@ func resourceHydraClientRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("policy_uri", client.PolicyURI)
 	d.Set("tos_uri", client.TermsOfServiceURI)
 	d.Set("client_uri", client.ClientURI)
-	d.Set("contacts", client.Contacts)
+	contacts := []string{}
+	for _, c := range client.Contacts {
+		if c != "" {
+			contacts = append(contacts, c)
+		}
+	}
+	d.Set("contacts", contacts)
 	d.Set("logo_uri", client.LogoURI)
 
 	return nil
@@ -232,7 +240,6 @@ func resourceHydraClientRead(d *schema.ResourceData, meta interface{}) error {
 
 func resourceHydraClientUpdate(d *schema.ResourceData, meta interface{}) error {
 	hydra := meta.(*sdk.Client)
-
 	client := &hclient.Client{}
 	setClientData(d, client)
 	err := hydra.Clients.UpdateClient(client)

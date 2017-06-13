@@ -8,7 +8,6 @@ import:
   - plugin
   - terraform
 - package: github.com/ory-am/hydra
-  version: 3cfab4e914f2575fbb52d7b7b487cd25b6a58931
   subpackages:
   - client
   - sdk
