@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ory/hydra/sdk/go/hydra"
-	"github.com/ory/hydra/sdk/go/hydra/swagger"
+	"github.com/ory/hydra-client-go/client"
+	"github.com/ory/hydra-client-go/client/admin"
+	"github.com/ory/hydra-client-go/models"
 	"github.com/pkg/errors"
 
 	"github.com/hashicorp/terraform/helper/schema"
@@ -152,7 +153,7 @@ func resourceHydraClient() *schema.Resource {
 	}
 }
 
-func setClientData(d *schema.ResourceData, c *swagger.OAuth2Client) {
+func setClientData(d *schema.ResourceData, c *models.OAuth2Client) {
 
 	c.ClientName = d.Get("name").(string)
 	c.RedirectUris = toStringSlice(d.Get("redirect_uris").([]interface{}))
@@ -163,7 +164,7 @@ func setClientData(d *schema.ResourceData, c *swagger.OAuth2Client) {
 	)
 
 	if val, ok := d.GetOk("client_id"); ok {
-		c.ClientId = val.(string)
+		c.ClientID = val.(string)
 	}
 
 	if val, ok := d.GetOk("owner"); ok {
@@ -189,15 +190,15 @@ func setClientData(d *schema.ResourceData, c *swagger.OAuth2Client) {
 	}
 
 	if val, ok := d.GetOk("policy_uri"); ok {
-		c.PolicyUri = val.(string)
+		c.PolicyURI = val.(string)
 	}
 
 	if val, ok := d.GetOk("tos_uri"); ok {
-		c.TosUri = val.(string)
+		c.TosURI = val.(string)
 	}
 
 	if val, ok := d.GetOk("c_uri"); ok {
-		c.ClientUri = val.(string)
+		c.ClientURI = val.(string)
 	}
 
 	if val, ok := d.GetOk("contacts"); ok {
@@ -205,7 +206,7 @@ func setClientData(d *schema.ResourceData, c *swagger.OAuth2Client) {
 	}
 
 	if val, ok := d.GetOk("logo_uri"); ok {
-		c.LogoUri = val.(string)
+		c.LogoURI = val.(string)
 	}
 
 	if val, ok := d.GetOk("token_endpoint_auth_method"); ok {
@@ -214,40 +215,35 @@ func setClientData(d *schema.ResourceData, c *swagger.OAuth2Client) {
 }
 
 func resourceHydraClientCreate(d *schema.ResourceData, meta interface{}) error {
-	hydra := meta.(*hydra.CodeGenSDK)
+	hydra := meta.(*client.OryHydra)
 
-	client := &swagger.OAuth2Client{}
+	client := &models.OAuth2Client{}
 
 	setClientData(d, client)
 
-	client, resp, err := hydra.CreateOAuth2Client(*client)
+	resp, err := hydra.Admin.CreateOAuth2Client(admin.NewCreateOAuth2ClientParams().WithBody(client))
 	if err != nil {
 		return errors.Wrapf(err, "creating client")
 	}
-	if !httpOk(resp.StatusCode) {
-		return errors.Errorf("unexpected HTTP status from server %d", resp.StatusCode)
-	}
 
-	d.SetId(client.ClientId)
+	client = resp.Payload
+
+	d.SetId(client.ClientID)
 	d.Set("client_secret", client.ClientSecret)
 
 	return resourceHydraClientRead(d, meta)
 }
 
 func resourceHydraClientRead(d *schema.ResourceData, meta interface{}) error {
-	hydra := meta.(*hydra.CodeGenSDK)
+	hydra := meta.(*client.OryHydra)
 
-	fclient, resp, err := hydra.GetOAuth2Client(d.Id())
+	fclient, err := hydra.Admin.GetOAuth2Client(admin.NewGetOAuth2ClientParams().WithID(d.Id()))
 	if err != nil {
 		return err
 	}
 
-	if !httpOk(resp.StatusCode) {
-		return errors.Errorf("unexpected HTTP status received %d", resp.StatusCode)
-	}
-
-	client := fclient
-	d.SetId(client.ClientId)
+	client := fclient.Payload
+	d.SetId(client.ClientID)
 	d.Set("name", client.ClientName)
 	d.Set("scope", strings.Split(client.Scope, " "))
 	d.Set("owner", client.Owner)
@@ -256,9 +252,9 @@ func resourceHydraClientRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("response_types", client.ResponseTypes)
 	d.Set("grant_types", client.GrantTypes)
 
-	d.Set("policy_uri", client.PolicyUri)
-	d.Set("tos_uri", client.TosUri)
-	d.Set("client_uri", client.ClientUri)
+	d.Set("policy_uri", client.PolicyURI)
+	d.Set("tos_uri", client.TosURI)
+	d.Set("client_uri", client.ClientURI)
 	d.Set("token_endpoint_auth_method", client.TokenEndpointAuthMethod)
 	contacts := []string{}
 	for _, c := range client.Contacts {
@@ -267,35 +263,32 @@ func resourceHydraClientRead(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 	d.Set("contacts", contacts)
-	d.Set("logo_uri", client.LogoUri)
+	d.Set("logo_uri", client.LogoURI)
 
 	return nil
 }
 
 func resourceHydraClientUpdate(d *schema.ResourceData, meta interface{}) error {
-	hydra := meta.(*hydra.CodeGenSDK)
-	client := &swagger.OAuth2Client{}
+	hydra := meta.(*client.OryHydra)
+	client := &models.OAuth2Client{}
 	setClientData(d, client)
-	client, resp, err := hydra.UpdateOAuth2Client(d.Id(), *client)
+
+	_, err := hydra.Admin.UpdateOAuth2Client(admin.NewUpdateOAuth2ClientParams().WithID(d.Id()).WithBody(client))
 	if err != nil {
 		return err
-	}
-
-	if !httpOk(resp.StatusCode) {
-		return httpStatusErr(resp.StatusCode)
 	}
 
 	return resourceHydraClientRead(d, meta)
 }
 
 func resourceHydraClientDelete(d *schema.ResourceData, meta interface{}) error {
-	hydra := meta.(*hydra.CodeGenSDK)
+	hydra := meta.(*client.OryHydra)
 
-	resp, err := hydra.DeleteOAuth2Client(d.Id())
+	_, err := hydra.Admin.DeleteOAuth2Client(admin.NewDeleteOAuth2ClientParams().WithID(d.Id()))
 
 	if err != nil {
 		return errors.Wrap(err, "deleting client")
 	}
 
-	return httpStatusErr(resp.StatusCode)
+	return nil
 }
