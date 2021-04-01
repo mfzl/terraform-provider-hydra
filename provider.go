@@ -9,25 +9,25 @@ import (
 func Provider() terraform.ResourceProvider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
-			"client_id": &schema.Schema{
+			"client_id": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("HYDRA_CLIENT_ID", nil),
 				Description: "OAuth Client ID",
 			},
-			"client_secret": &schema.Schema{
+			"client_secret": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("HYDRA_CLIENT_SECRET", nil),
 				Description: "OAuth Client Secret",
 			},
-			"cluster_url": &schema.Schema{
+			"cluster_url": {
 				Type:        schema.TypeString,
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("HYDRA_CLUSTER_URL", nil),
 				Description: "URL to Hydra server",
 			},
-			"skip_tls_verify": &schema.Schema{
+			"skip_tls_verify": {
 				Type:        schema.TypeBool,
 				Default:     false,
 				Optional:    true,

@@ -19,29 +19,29 @@ func resourceHydraClient() *schema.Resource {
 		Delete: resourceHydraClientDelete,
 		Schema: map[string]*schema.Schema{
 			// cannot use "id" here since it's special to terraform
-			"client_id": &schema.Schema{
+			"client_id": {
 				Type:     schema.TypeString,
 				Computed: true,
 				ForceNew: true,
 				Optional: true,
 			},
-			"name": &schema.Schema{
+			"name": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"public": &schema.Schema{
+			"public": {
 				Type:     schema.TypeBool,
 				Default:  false,
 				Optional: true,
 			},
 			// if omitted, Hydra generates a secret
-			"client_secret": &schema.Schema{
+			"client_secret": {
 				Type:      schema.TypeString,
 				Computed:  true,
 				Optional:  true,
 				Sensitive: true,
 			},
-			"response_types": &schema.Schema{
+			"response_types": {
 				Type: schema.TypeSet,
 				// Optional since Hydra sets response type as 'code' if ommited
 				Optional: true,
@@ -66,17 +66,17 @@ func resourceHydraClient() *schema.Resource {
 				},
 				Set: schema.HashString,
 			},
-			"redirect_uris": &schema.Schema{
+			"redirect_uris": {
 				Type:     schema.TypeList,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Optional: true,
 			},
-			"scope": &schema.Schema{
+			"scope": {
 				Type:     schema.TypeSet,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Required: true,
 			},
-			"grant_types": &schema.Schema{
+			"grant_types": {
 				Type: schema.TypeSet,
 				// Optional since Hydra sets default as "authorization_code" grant if ommited
 				Optional: true,
@@ -101,32 +101,32 @@ func resourceHydraClient() *schema.Resource {
 					},
 				},
 			},
-			"owner": &schema.Schema{
+			"owner": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"policy_uri": &schema.Schema{
+			"policy_uri": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"logo_uri": &schema.Schema{
+			"logo_uri": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"contacts": &schema.Schema{
+			"contacts": {
 				Type:     schema.TypeList,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Optional: true,
 			},
-			"tos_uri": &schema.Schema{
+			"tos_uri": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"client_uri": &schema.Schema{
+			"client_uri": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"token_endpoint_auth_method": &schema.Schema{
+			"token_endpoint_auth_method": {
 				Type:     schema.TypeString,
 				Optional: true,
 				ValidateFunc: func(v interface{}, k string) (ws []string, errs []error) {
