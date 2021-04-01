@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/terraform"
-	"github.com/ory-am/hydra/sdk"
+	"github.com/ory/hydra/sdk/go/hydra"
 )
 
 func Provider() terraform.ResourceProvider {
@@ -11,13 +11,13 @@ func Provider() terraform.ResourceProvider {
 		Schema: map[string]*schema.Schema{
 			"client_id": &schema.Schema{
 				Type:        schema.TypeString,
-				Required:    true,
+				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("HYDRA_CLIENT_ID", nil),
 				Description: "OAuth Client ID",
 			},
 			"client_secret": &schema.Schema{
 				Type:        schema.TypeString,
-				Required:    true,
+				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("HYDRA_CLIENT_SECRET", nil),
 				Description: "OAuth Client Secret",
 			},
@@ -36,24 +36,23 @@ func Provider() terraform.ResourceProvider {
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"hydra_client": resourceHydraClient(),
-			"hydra_policy": resourceHydraPolicy(),
 		},
 		ConfigureFunc: providerConfigure,
 	}
 }
 
 func providerConfigure(res *schema.ResourceData) (interface{}, error) {
-	hydra, err := sdk.Connect(
-		sdk.ClientID(res.Get("client_id").(string)),
-		sdk.ClientSecret(res.Get("client_secret").(string)),
-		sdk.ClusterURL(res.Get("cluster_url").(string)),
-		sdk.SkipTLSVerify(res.Get("skip_tls_verify").(bool)),
-		sdk.Scopes("hydra.clients", "hydra.policies"),
-	)
+
+	hydraClient, err := hydra.NewSDK(&hydra.Configuration{
+		ClientID:     res.Get("client_id").(string),
+		ClientSecret: res.Get("client_secret").(string),
+		AdminURL:     res.Get("cluster_url").(string),
+		Scopes:       []string{"hydra.clients", "hydra.policies", "hydra.*"},
+	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	return hydra, nil
+	return hydraClient, nil
 }

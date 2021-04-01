@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	hclient "github.com/ory-am/hydra/client"
-	"github.com/ory-am/hydra/sdk"
+	"github.com/ory/hydra/sdk/go/hydra"
+	"github.com/ory/hydra/sdk/go/hydra/swagger"
+	"github.com/pkg/errors"
 
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -46,7 +47,7 @@ func resourceHydraClient() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
-					ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
+					ValidateFunc: func(v interface{}, k string) (ws []string, errs []error) {
 						value := v.(string)
 						validTypes := validStrOptions{
 							"id_token": true,
@@ -55,7 +56,7 @@ func resourceHydraClient() *schema.Resource {
 						}
 
 						if _, ok := validTypes[value]; !ok {
-							errors = append(errors, fmt.Errorf(
+							errs = append(errs, fmt.Errorf(
 								"%q contains an invalid response type \"%q\". Valid response types are any or all of: %s",
 								k, value, strings.Join(validTypes.keys(), ","),
 							))
@@ -81,7 +82,7 @@ func resourceHydraClient() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
-					ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
+					ValidateFunc: func(v interface{}, k string) (ws []string, errs []error) {
 						value := v.(string)
 						validTypes := validStrOptions{
 							"implicit":           true,
@@ -91,7 +92,7 @@ func resourceHydraClient() *schema.Resource {
 							"client_credentials": true,
 						}
 						if _, ok := validTypes[value]; !ok {
-							errors = append(errors, fmt.Errorf(
+							errs = append(errs, fmt.Errorf(
 								"%q contains an invalid grant type \"%q\". Valid grant types are any or all of: %s",
 								k, value, strings.Join(validTypes.keys(), ","),
 							))
@@ -125,14 +126,36 @@ func resourceHydraClient() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"token_endpoint_auth_method": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				ValidateFunc: func(v interface{}, k string) (ws []string, errs []error) {
+					value := v.(string)
+					validTypes := validStrOptions{
+						"client_secret_post":  true,
+						"client_secret_basic": true,
+						"private_key_jwt":     true,
+						"none":                true,
+					}
+					if _, ok := validTypes[value]; !ok {
+						errs = append(errs, fmt.Errorf(
+							"%q contains an invalid grant type \"%q\". Valid token endpoint auth methods are any of: %s",
+							k, value, strings.Join(validTypes.keys(), ","),
+						))
+					}
+					return nil, nil
+				},
+			},
+			// Requested Client Authentication method for the Token Endpoint. The options are client_secret_post, client_secret_basic, private_key_jwt, and none.
+			//TokenEndpointAuthMethod string `json:"token_endpoint_auth_method,omitempty"`
 		},
 	}
 }
 
-func setClientData(d *schema.ResourceData, c *hclient.Client) {
+func setClientData(d *schema.ResourceData, c *swagger.OAuth2Client) {
 
-	c.Name = d.Get("name").(string)
-	c.RedirectURIs = toStringSlice(d.Get("redirect_uris").([]interface{}))
+	c.ClientName = d.Get("name").(string)
+	c.RedirectUris = toStringSlice(d.Get("redirect_uris").([]interface{}))
 
 	c.Scope = strings.Join(
 		toStringSlice(d.Get("scope").(*schema.Set).List()),
@@ -140,22 +163,22 @@ func setClientData(d *schema.ResourceData, c *hclient.Client) {
 	)
 
 	if val, ok := d.GetOk("client_id"); ok {
-		c.ID = val.(string)
+		c.ClientId = val.(string)
 	}
 
 	if val, ok := d.GetOk("owner"); ok {
 		c.Owner = val.(string)
 	}
 
-	if val, ok := d.GetOk("secret"); ok {
-		c.Secret = val.(string)
+	if val, ok := d.GetOk("client_secret"); ok {
+		c.ClientSecret = val.(string)
 	}
 
-	if val, ok := d.GetOk("public"); ok {
-		c.Public = val.(bool)
-	} else {
-		c.Public = false
-	}
+	// if val, ok := d.GetOk("public"); ok {
+	// 	c.Public = val.(bool)
+	// } else {
+	// 	c.Public = false
+	// }
 
 	if val, ok := d.GetOk("response_types"); ok {
 		c.ResponseTypes = toStringSlice(val.(*schema.Set).List())
@@ -166,15 +189,15 @@ func setClientData(d *schema.ResourceData, c *hclient.Client) {
 	}
 
 	if val, ok := d.GetOk("policy_uri"); ok {
-		c.PolicyURI = val.(string)
+		c.PolicyUri = val.(string)
 	}
 
 	if val, ok := d.GetOk("tos_uri"); ok {
-		c.TermsOfServiceURI = val.(string)
+		c.TosUri = val.(string)
 	}
 
 	if val, ok := d.GetOk("c_uri"); ok {
-		c.ClientURI = val.(string)
+		c.ClientUri = val.(string)
 	}
 
 	if val, ok := d.GetOk("contacts"); ok {
@@ -182,50 +205,61 @@ func setClientData(d *schema.ResourceData, c *hclient.Client) {
 	}
 
 	if val, ok := d.GetOk("logo_uri"); ok {
-		c.LogoURI = val.(string)
+		c.LogoUri = val.(string)
 	}
 
+	if val, ok := d.GetOk("token_endpoint_auth_method"); ok {
+		c.TokenEndpointAuthMethod = val.(string)
+	}
 }
 
 func resourceHydraClientCreate(d *schema.ResourceData, meta interface{}) error {
-	hydra := meta.(*sdk.Client)
+	hydra := meta.(*hydra.CodeGenSDK)
 
-	client := &hclient.Client{}
+	client := &swagger.OAuth2Client{}
 
 	setClientData(d, client)
 
-	err := hydra.Clients.CreateClient(client)
+	client, resp, err := hydra.CreateOAuth2Client(*client)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "creating client")
+	}
+	if !httpOk(resp.StatusCode) {
+		return errors.Errorf("unexpected HTTP status from server %d", resp.StatusCode)
 	}
 
-	d.SetId(client.ID)
-	d.Set("client_secret", client.Secret)
+	d.SetId(client.ClientId)
+	d.Set("client_secret", client.ClientSecret)
 
 	return resourceHydraClientRead(d, meta)
 }
 
 func resourceHydraClientRead(d *schema.ResourceData, meta interface{}) error {
-	hydra := meta.(*sdk.Client)
+	hydra := meta.(*hydra.CodeGenSDK)
 
-	fclient, err := hydra.Clients.GetClient(d.Id())
+	fclient, resp, err := hydra.GetOAuth2Client(d.Id())
 	if err != nil {
 		return err
 	}
 
-	client := fclient.(*hclient.Client)
-	d.SetId(client.ID)
-	d.Set("name", client.Name)
+	if !httpOk(resp.StatusCode) {
+		return errors.Errorf("unexpected HTTP status received %d", resp.StatusCode)
+	}
+
+	client := fclient
+	d.SetId(client.ClientId)
+	d.Set("name", client.ClientName)
 	d.Set("scope", strings.Split(client.Scope, " "))
 	d.Set("owner", client.Owner)
-	d.Set("public", client.Public)
+	// d.Set("public", client.Public)
 
 	d.Set("response_types", client.ResponseTypes)
 	d.Set("grant_types", client.GrantTypes)
 
-	d.Set("policy_uri", client.PolicyURI)
-	d.Set("tos_uri", client.TermsOfServiceURI)
-	d.Set("client_uri", client.ClientURI)
+	d.Set("policy_uri", client.PolicyUri)
+	d.Set("tos_uri", client.TosUri)
+	d.Set("client_uri", client.ClientUri)
+	d.Set("token_endpoint_auth_method", client.TokenEndpointAuthMethod)
 	contacts := []string{}
 	for _, c := range client.Contacts {
 		if c != "" {
@@ -233,25 +267,35 @@ func resourceHydraClientRead(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 	d.Set("contacts", contacts)
-	d.Set("logo_uri", client.LogoURI)
+	d.Set("logo_uri", client.LogoUri)
 
 	return nil
 }
 
 func resourceHydraClientUpdate(d *schema.ResourceData, meta interface{}) error {
-	hydra := meta.(*sdk.Client)
-	client := &hclient.Client{}
+	hydra := meta.(*hydra.CodeGenSDK)
+	client := &swagger.OAuth2Client{}
 	setClientData(d, client)
-	err := hydra.Clients.UpdateClient(client)
+	client, resp, err := hydra.UpdateOAuth2Client(d.Id(), *client)
 	if err != nil {
 		return err
+	}
+
+	if !httpOk(resp.StatusCode) {
+		return httpStatusErr(resp.StatusCode)
 	}
 
 	return resourceHydraClientRead(d, meta)
 }
 
 func resourceHydraClientDelete(d *schema.ResourceData, meta interface{}) error {
-	hydra := meta.(*sdk.Client)
+	hydra := meta.(*hydra.CodeGenSDK)
 
-	return hydra.Clients.DeleteClient(d.Id())
+	resp, err := hydra.DeleteOAuth2Client(d.Id())
+
+	if err != nil {
+		return errors.Wrap(err, "deleting client")
+	}
+
+	return httpStatusErr(resp.StatusCode)
 }
